@@ -13,6 +13,7 @@ class ServerThread extends Thread {
     private int filesize;
 
     private final String path = "images" + File.separator;
+    private String clientpath;
     private String filename;
 
     /**
@@ -21,36 +22,37 @@ class ServerThread extends Thread {
 
     public ServerThread(Socket socket) throws IOException {
         this.socket = socket;
-        // если потоку ввода/вывода приведут к генерированию искдючения, оно проброситься дальше
+        // если потоку ввода/вывода приведут к генерированию исключения, оно проброситься дальше
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        start(); // вызываем run()
+        this.clientpath = path + socket.getInetAddress().toString().replace("/", "") + File.separator;
+        run(); // вызываем run()
     }
     @Override
     public void run() {
         try {
-            // первое сообщение отправленное сюда - это никнейм
-            this.filename = in.readLine();
-            this.filesize = Integer.parseInt(in.readLine());
-            System.out.println("Filename: " + filename);
-            System.out.println("Size: " + filesize);
-//            try {
-//                out.write(filename + "\n");
-//                out.flush(); // flush() нужен для выталкивания оставшихся данных
-//                // если такие есть, и очистки потока для дьнейших нужд
-//            } catch (IOException ignored)
+            // первое сообщение отправленное сюда - это имя файла, которое принимает сервер
+            // второе - размер файла
+//            this.filename = in.readLine();
+//            getFilesizeFromClient();
+//            System.out.println("Filename: " + filename);
+//            System.out.println("Size: " + filesize);
+
             try {
                 while (true) {
-//                    word = in.readLine();
-//                    if(word.equals("stop")) {
-//                        this.downService(); // харакири
-//                        break; // если пришла пустая строка - выходим из цикла прослушки
-//                    }
-//                    System.out.println("Echoing: " + word);
-                    saveFile(socket);
-//                    for (ServerThread vr : Server.serverList) {
-//                        vr.send(filename); // отослать принятое сообщение с привязанного клиента всем остальным влючая его
-//                    }
+                    String command = in.readLine();
+
+                    if (command.equalsIgnoreCase("uploading")) {
+                        System.out.println("Downloading file from client");
+                        getFileInfoFromClient();
+                        recieveFile();
+                    }
+
+                    if (command.equalsIgnoreCase("downloading")) {
+                        System.out.println("Uploading file to client");
+                        prepareClient();
+                        sendFile();
+                    }
                 }
             } catch (NullPointerException ignored) {}
         } catch (IOException e) {
@@ -58,43 +60,58 @@ class ServerThread extends Thread {
         }
     }
 
-    private void saveFile(Socket clientSocket) throws IOException {
-        String newPath = path + socket.getInetAddress().toString().replace("/", "") + File.separator;
+    private void sendFile() throws IOException {
+        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        FileInputStream fis = new FileInputStream(clientpath + filename);
 
-        File directory = new File(newPath);
-        if (! directory.exists()){
+        int placeholer;
+
+        byte[] buffer = new byte[4096];
+
+        while (fis.read(buffer) > 0) {
+            dos.write(buffer);
+        }
+        System.out.println("Sent file: " + filename);
+        fis.close();
+        dos.close();
+    }
+
+    private void recieveFile() throws IOException {
+        File directory = new File(clientpath);
+        if (!directory.exists()){
             directory.mkdirs();
         }
 
-        DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-        FileOutputStream fos = new FileOutputStream(newPath + filename);
+        DataInputStream dis = new DataInputStream(socket.getInputStream());
+        FileOutputStream fos = new FileOutputStream(clientpath + filename);
         byte[] buffer = new byte[4096];
 
         // Send file size in separate msg
         int read = 0;
-        int totalRead = 0;
         int remaining = filesize;
         while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
-//            totalRead += read;
             remaining -= read;
-//            System.out.println("read " + totalRead + " bytes.");
             fos.write(buffer, 0, read);
         }
-        System.out.println("Created file: " + newPath + filename);
+        System.out.println("Created file: " + clientpath + filename);
         fos.close();
         dis.close();
     }
 
-    /**
-     * отсылка одного сообщения клиенту по указанному потоку
-     * @param msg
-     */
-    private void send(String msg) {
-        try {
-            out.write(msg + "\n");
-            out.flush();
-        } catch (IOException ignored) {}
+    private void getFileInfoFromClient() throws IOException {
+        this.filename = in.readLine();
+        this.filesize = Integer.parseInt(in.readLine());
+    }
 
+    private void prepareClient() throws IOException {
+        this.filename = in.readLine();
+        int size = getFilesize(new File(clientpath + filename));
+        out.write(size + "\n");
+        out.flush();
+    }
+
+    private int getFilesize(File file) {
+        return (int) file.length();
     }
 
     /**
