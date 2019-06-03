@@ -17,12 +17,15 @@ class ClientThread {
     private BufferedReader inputUser; // поток чтения с консоли
     private String addr; // ip адрес клиента
     private int port; // порт соединения
-    private String filename; // имя клиента
+    private String filename;
+    private int filesize;
     private Date time;
     private String dtime;
     private SimpleDateFormat dt1;
 
     private final String path = "C:\\ssp6\\client\\";
+    private final String keyfile = "crypto.key";
+    private String key;
 
     /**
      * для создания необходимо принять адрес и номер порта
@@ -32,6 +35,12 @@ class ClientThread {
         this.addr = addr;
         this.port = port;
         try {
+//            this.key = Encryption.readKey(Encryption.generateKey(keyfile, 16));
+            this.key = Encryption.readKey(new File(keyfile));
+            System.out.println(key);
+
+//            encryptionTest();
+
             this.socket = new Socket(addr, port);
             System.out.println("Connected to " + socket);
         } catch (IOException e) {
@@ -43,15 +52,11 @@ class ClientThread {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 //            filename = this.inputFilename(); // перед началом необходимо спросит имя
-            new FileOperations().send();
-//            new ReadMsg().start(); // нить читающая сообщения из сокета в бесконечном цикле
-//            new WriteMsg().start(); // нить пишущая сообщения в сокет приходящие с консоли в бесконечном цикле
+            new FileOperations().run();
         } catch (IOException e) {
             // Сокет должен быть закрыт при любой
             // ошибке, кроме ошибки конструктора сокета:
             ClientThread.this.downService();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
         // В противном случае сокет будет закрыт
         // в методе run() нити.
@@ -60,36 +65,9 @@ class ClientThread {
     public class FileOperations extends Thread {
         @Override
         public void run() {
-//            String str;
-            try {
-                while (true) {
-//                    str = in.readLine(); // ждем сообщения с сервера
-//                    if (str.equals("stop")) {
-//                        client.ClientThread.this.downService(); // харакири
-//                        break; // выходим из цикла если пришло "stop"
-//                    }
-                    send(); // пишем сообщение с сервера на консоль
-                }
-            } catch (IOException e) {
-                ClientThread.this.downService();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        public void send() throws IOException, InterruptedException {
-            filename = inputFilename();
-
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            FileInputStream fis = new FileInputStream(path + filename);
-            byte[] buffer = new byte[4096];
-
-            while (fis.read(buffer) > 0) {
-                dos.write(buffer);
-            }
-
-            fis.close();
-            dos.close();
+//            while (true) {
+                inputOperation();
+//            }
         }
     }
 
@@ -98,22 +76,99 @@ class ClientThread {
      * и отсылка эхо с приветсвием на сервер
      */
 
-    private String inputFilename() throws InterruptedException {
-        System.out.print("Input filename: ");
+    private void inputOperation() {
         try {
-            filename = inputUser.readLine();
-
-            File file = new File(path + filename);
-            int size = (int) file.length();
-
-            out.write(filename + "\n");
-            out.write(size + "\n");
-            out.flush();
-//            Thread.sleep(1000);
+            System.out.print("Input operation.\n(d)ownload file from server or (u)pload to server?\n");
+            String operation = inputUser.readLine();
+            process(operation);
         } catch (IOException ignored) {
+        } catch (EncryptionException e) {
+            e.printStackTrace();
         }
-        return filename;
+    }
 
+    private void process(String operation) throws IOException, EncryptionException {
+        if (operation.equalsIgnoreCase("u")) {
+            out.write("uploading" + "\n");
+            out.flush();
+
+            System.out.print("Input filename to upload: ");
+            filename = inputUser.readLine();
+//            prepareServer();
+            sendFile(true);
+        } else if (operation.equalsIgnoreCase("d")) {
+            out.write("downloading" + "\n");
+            out.flush();
+
+            System.out.print("Input filename to download: ");
+            filename = inputUser.readLine();
+            getFileInfoFromServer();
+            recieveFile(true);
+        }
+    }
+
+    private void sendFile(boolean encrypt) throws IOException, EncryptionException {
+        String file = path + filename;
+        if (encrypt) {
+            System.out.println("Encrypting file " + file);
+            String encrypted_file = path + filename + ".encrypted";
+            Encryption.encrypt(key, new File(file), new File(encrypted_file));
+            file = encrypted_file;
+        }
+
+        prepareServer(file);
+
+        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        FileInputStream fis = new FileInputStream(file);
+        byte[] buffer = new byte[4096];
+
+        while (fis.read(buffer) > 0) {
+            dos.write(buffer);
+        }
+
+        fis.close();
+        dos.close();
+    }
+
+    private void recieveFile(boolean decrypt) throws IOException, EncryptionException {
+        DataInputStream dis = new DataInputStream(socket.getInputStream());
+        FileOutputStream fos = new FileOutputStream(filename);
+        byte[] buffer = new byte[4096];
+
+        // Send file size in separate msg
+        int read = 0;
+        int remaining = filesize;
+        while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+            remaining -= read;
+            fos.write(buffer, 0, read);
+        }
+        System.out.println("Created file: " + filename);
+        fos.close();
+        dis.close();
+
+        if (decrypt) {
+            System.out.println("Decrypting file " + filename);
+            String decrypted_file = path + filename + ".decrypted";
+            Encryption.decrypt(key, new File(filename), new File(decrypted_file));
+        }
+    }
+
+    private void prepareServer(String file) throws IOException {
+        int size = getFilesize(new File(file));
+        out.write(filename + "\n");
+        out.write(size + "\n");
+        out.flush();
+    }
+
+    private void getFileInfoFromServer() throws IOException {
+        out.write(filename + "\n");
+        out.flush();
+
+        this.filesize = Integer.parseInt(in.readLine());
+    }
+
+    private int getFilesize(File file) {
+        return (int) file.length();
     }
 
     /**
@@ -129,60 +184,16 @@ class ClientThread {
         } catch (IOException ignored) {}
     }
 
-    // нить чтения сообщений с сервера
-    private class ReadMsg extends Thread {
-        @Override
-        public void run() {
-
-            String str;
-            try {
-                while (true) {
-                    str = in.readLine(); // ждем сообщения с сервера
-                    if (str.equals("stop")) {
-                        ClientThread.this.downService(); // харакири
-                        break; // выходим из цикла если пришло "stop"
-                    }
-                    System.out.println(str); // пишем сообщение с сервера на консоль
-                }
-            } catch (IOException e) {
-                ClientThread.this.downService();
-            }
-        }
-    }
-
-    // нить отправляющая сообщения приходящие с консоли на сервер
-    public class WriteMsg extends Thread {
-
-        @Override
-        public void run() {
-            while (true) {
-                String userWord;
-                try {
-                    time = new Date(); // текущая дата
-                    dt1 = new SimpleDateFormat("HH:mm:ss"); // берем только время до секунд
-                    dtime = dt1.format(time); // время
-                    userWord = inputUser.readLine(); // сообщения с консоли
-                    if (userWord.equals("stop")) {
-                        out.write("stop" + "\n");
-                        ClientThread.this.downService(); // харакири
-                        break; // выходим из цикла если пришло "stop"
-                    } else {
-                        out.write("(" + dtime + ") " + filename + ": " + userWord + "\n"); // отправляем на сервер
-                    }
-                    out.flush(); // чистим
-                } catch (IOException e) {
-                    ClientThread.this.downService(); // в случае исключения тоже харакири
-
-                }
-
-            }
-        }
+    public void encryptionTest() throws EncryptionException {
+//        Encryption.encrypt(key, new File(path + "boat.png"), new File(path + "boat_encrypted.png"));
+        Encryption.decrypt(key, new File(path + "lena.png.encrypted"), new File(path + "lena_decrypted.png"));
+        System.out.println("Test Done!");
     }
 }
 
 public class TestClient {
 
-    public static String ipAddr = "192.168.1.6";
+    public static String ipAddr = "localhost";
     public static int port = 8080;
 
     /**
