@@ -15,44 +15,30 @@ class ClientThread {
     private BufferedReader in; // поток чтения из сокета
     private BufferedWriter out; // поток чтения в сокет
     private BufferedReader inputUser; // поток чтения с консоли
-    private String addr; // ip адрес клиента
-    private int port; // порт соединения
     private String filename;
     private int filesize;
-    private Date time;
-    private String dtime;
-    private SimpleDateFormat dt1;
 
-    private final String path = "C:\\ssp6\\client\\";
-    private final String keyfile = "crypto.key";
-    private String key;
+    private static final String path = "images_client\\";
+    private static final String keyfile = "crypto.key";
+    private static String key;
 
     /**
      * для создания необходимо принять адрес и номер порта
      */
 
     public ClientThread(String addr, int port) {
-        this.addr = addr;
-        this.port = port;
         try {
-//            this.key = Encryption.readKey(Encryption.generateKey(keyfile, 16));
-            this.key = Encryption.readKey(new File(keyfile));
-            System.out.println(key);
-
-//            encryptionTest();
-
             this.socket = new Socket(addr, port);
             System.out.println("Connected to " + socket);
         } catch (IOException e) {
             System.err.println("Socket failed");
         }
+
         try {
             // потоки чтения из сокета / записи в сокет, и чтения с консоли
             inputUser = new BufferedReader(new InputStreamReader(System.in));
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-//            filename = this.inputFilename(); // перед началом необходимо спросит имя
-            new FileOperations().run();
         } catch (IOException e) {
             // Сокет должен быть закрыт при любой
             // ошибке, кроме ошибки конструктора сокета:
@@ -62,56 +48,30 @@ class ClientThread {
         // в методе run() нити.
     }
 
-    public class FileOperations extends Thread {
-        @Override
-        public void run() {
-//            while (true) {
-                inputOperation();
-//            }
-        }
+    public static void generateKey() throws IOException {
+        key = Encryption.readKey(Encryption.generateKey(keyfile, 16));
+        System.out.println(key);
     }
 
-    /**
-     * просьба ввести имя,
-     * и отсылка эхо с приветсвием на сервер
-     */
-
-    private void inputOperation() {
+    public static void readKey() {
         try {
-            System.out.print("Input operation.\n(d)ownload file from server or (u)pload to server?\n");
-            String operation = inputUser.readLine();
-            process(operation);
-        } catch (IOException ignored) {
-        } catch (EncryptionException e) {
-            e.printStackTrace();
+            key = Encryption.readKey(new File(keyfile));
+            System.out.println(key);
+        } catch (IOException e) {
+            System.err.println("Reading keyfile failed");
         }
     }
 
-    private void process(String operation) throws IOException, EncryptionException {
-        if (operation.equalsIgnoreCase("u")) {
-            out.write("uploading" + "\n");
-            out.flush();
+    public void sendFile(String filename, boolean encrypt) throws IOException, EncryptionException {
+        out.write("uploading" + "\n");
+        out.flush();
 
-            System.out.print("Input filename to upload: ");
-            filename = inputUser.readLine();
-//            prepareServer();
-            sendFile(true);
-        } else if (operation.equalsIgnoreCase("d")) {
-            out.write("downloading" + "\n");
-            out.flush();
-
-            System.out.print("Input filename to download: ");
-            filename = inputUser.readLine();
-            getFileInfoFromServer();
-            recieveFile(true);
-        }
-    }
-
-    private void sendFile(boolean encrypt) throws IOException, EncryptionException {
-        String file = path + filename;
+        String file = filename;
         if (encrypt) {
             System.out.println("Encrypting file " + file);
-            String encrypted_file = path + filename + ".encrypted";
+
+            readKey();
+            String encrypted_file = filename + ".encrypted";
             Encryption.encrypt(key, new File(file), new File(encrypted_file));
             file = encrypted_file;
         }
@@ -130,7 +90,14 @@ class ClientThread {
         dos.close();
     }
 
-    private void recieveFile(boolean decrypt) throws IOException, EncryptionException {
+    public void recieveFile(String filename, boolean decrypt) throws IOException, EncryptionException {
+        out.write("downloading" + "\n");
+        out.flush();
+
+        this.filename = filename;
+
+        getFileInfoFromServer();
+
         DataInputStream dis = new DataInputStream(socket.getInputStream());
         FileOutputStream fos = new FileOutputStream(filename);
         byte[] buffer = new byte[4096];
@@ -148,13 +115,17 @@ class ClientThread {
 
         if (decrypt) {
             System.out.println("Decrypting file " + filename);
-            String decrypted_file = path + filename + ".decrypted";
+            readKey();
+            String decrypted_file = filename.replace(".encrypted", "");
             Encryption.decrypt(key, new File(filename), new File(decrypted_file));
         }
     }
 
-    private void prepareServer(String file) throws IOException {
-        int size = getFilesize(new File(file));
+    private void prepareServer(String filepath) throws IOException {
+        File file = new File(filepath);
+        filename = file.getName();
+
+        int size = getFilesize(file);
         out.write(filename + "\n");
         out.write(size + "\n");
         out.flush();
@@ -191,7 +162,7 @@ class ClientThread {
     }
 }
 
-public class TestClient {
+public class Client {
 
     public static String ipAddr = "localhost";
     public static int port = 8080;
@@ -201,6 +172,13 @@ public class TestClient {
      */
 
     public static void main(String[] args) {
-        new ClientThread(ipAddr, port);
+    }
+
+    public static ClientThread connect(String ipAddr, int port) {
+        return new ClientThread(ipAddr, port);
+    }
+
+    public static void generateKey() throws IOException {
+        ClientThread.generateKey();
     }
 }
