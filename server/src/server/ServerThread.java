@@ -26,18 +26,12 @@ class ServerThread extends Thread {
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         this.clientpath = path + socket.getInetAddress().toString().replace("/", "") + File.separator;
-        run(); // вызываем run()
+        run();
     }
+
     @Override
     public void run() {
         try {
-            // первое сообщение отправленное сюда - это имя файла, которое принимает сервер
-            // второе - размер файла
-//            this.filename = in.readLine();
-//            getFilesizeFromClient();
-//            System.out.println("Filename: " + filename);
-//            System.out.println("Size: " + filesize);
-
             try {
                 while (true) {
                     String command = in.readLine();
@@ -63,8 +57,6 @@ class ServerThread extends Thread {
     private void sendFile() throws IOException {
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
         FileInputStream fis = new FileInputStream(clientpath + filename);
-
-        int placeholer;
 
         byte[] buffer = new byte[4096];
 
