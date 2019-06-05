@@ -22,12 +22,17 @@ class ClientThread {
     private static final String keyfile = "crypto.key";
     private static String key;
 
+    private static String ipAddr;
+    private static int port;
+
     /**
      * для создания необходимо принять адрес и номер порта
      */
 
     public ClientThread(String addr, int port) {
         try {
+            this.ipAddr = addr;
+            this.port = port;
             this.socket = new Socket(addr, port);
             System.out.println("Connected to " + socket);
         } catch (IOException e) {
@@ -145,7 +150,7 @@ class ClientThread {
     /**
      * закрытие сокета
      */
-    private void downService() {
+    public void downService() {
         try {
             if (!socket.isClosed()) {
                 socket.close();
@@ -159,6 +164,18 @@ class ClientThread {
 //        Encryption.encrypt(key, new File(path + "boat.png"), new File(path + "boat_encrypted.png"));
         Encryption.decrypt(key, new File(path + "lena.png.encrypted"), new File(path + "lena_decrypted.png"));
         System.out.println("Test Done!");
+    }
+
+    public String getKeyfile() {
+        return keyfile;
+    }
+
+    public String getIpAddr() {
+        return ipAddr;
+    }
+
+    public int getPort() {
+        return port;
     }
 }
 

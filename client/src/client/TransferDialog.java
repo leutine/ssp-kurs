@@ -27,6 +27,8 @@ public class TransferDialog extends JFrame {
 
     public TransferDialog(Frame parent, ClientThread conn) {
         this.connection = conn;
+        String ipAddr = conn.getIpAddr();
+        int port = conn.getPort();
         setPreferredSize(new Dimension(800, 300));
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
@@ -56,6 +58,13 @@ public class TransferDialog extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 if (chbxEncrypt.isSelected()) {
                     encrypt = true;
+                    if (!IsKeyExist(new File(connection.getKeyfile()))) {
+                        JOptionPane.showMessageDialog(parent,
+                                "Для использования шифрования необходимо сгенерировать ключ!",
+                                "No key",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        chbxEncrypt.setSelected(false);
+                    }
                 }
             }
         });
@@ -71,6 +80,11 @@ public class TransferDialog extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
                     Client.generateKey();
+                    JOptionPane.showMessageDialog(parent,
+                            "Ключ сгенерирован!",
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+
                     System.out.println("Key generated!");
                 } catch (IOException ioe) {
                     JOptionPane.showMessageDialog(parent,
@@ -148,5 +162,9 @@ public class TransferDialog extends JFrame {
         dialog.setMode(FileDialog.LOAD);
         dialog.setVisible(true);
         return dialog.getDirectory() + dialog.getFile();
+    }
+
+    private static boolean IsKeyExist(File keyfile) {
+        return keyfile.exists();
     }
 }
