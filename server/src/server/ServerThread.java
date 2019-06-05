@@ -33,9 +33,8 @@ class ServerThread extends Thread {
     public void run() {
         try {
             try {
-                while (true) {
-                    String command = in.readLine();
-
+                String command;
+                while ((command = in.readLine()) != null) {
                     if (command.equalsIgnoreCase("uploading")) {
                         System.out.println("Downloading file from client");
                         getFileInfoFromClient();
@@ -50,6 +49,7 @@ class ServerThread extends Thread {
                 }
             } catch (NullPointerException ignored) {}
         } catch (IOException e) {
+            System.out.println("Down Service!");
             this.downService();
         }
     }

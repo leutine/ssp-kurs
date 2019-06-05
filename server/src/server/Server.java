@@ -12,7 +12,8 @@ public class Server {
     public static void main(String[] args) throws IOException {
         int port = Integer.parseInt(System.getProperty("port", "8080"));
 
-        try (ServerSocket server = new ServerSocket(port)) {
+        try {
+            ServerSocket server = new ServerSocket(port);
             System.out.println("Server started on port " + server.getLocalPort());
             while (true) {
                 // Блокируется до возникновения нового соединения:
@@ -26,6 +27,8 @@ public class Server {
                     socket.close();
                 }
             }
+        } catch (NullPointerException npe) {
+            System.out.println("NPE!");
         }
     }
 }
