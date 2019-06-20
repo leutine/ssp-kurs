@@ -20,7 +20,12 @@ public class Server {
                 Socket socket = server.accept();
                 System.out.println("Connection established with " + socket.getLocalSocketAddress());
                 try {
-                    serverList.add(new ServerThread(socket)); // добавить новое соединенние в список
+                    // UPD: Для того, чтобы код работал в отдельном потоке, ОБЯЗАТЕЛЬНО нужно вызывать
+                    // метод start() класса Thread
+                    // Вызов метода run() из конструктора ServerThread вводил сервер в ожидание завершения функции run
+                    ServerThread serverThread = new ServerThread(socket);
+                    serverList.add(serverThread);
+                    serverThread.start();
                 } catch (IOException e) {
                     // Если завершится неудачей, закрывается сокет,
                     // в противном случае, нить закроет его:

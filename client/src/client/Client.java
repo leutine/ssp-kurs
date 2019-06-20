@@ -12,8 +12,8 @@ import java.util.Date;
 class ClientThread {
 
     private Socket socket;
-    private BufferedReader in; // поток чтения из сокета
-    private BufferedWriter out; // поток чтения в сокет
+    private DataInputStream in; // поток чтения из сокета
+    private DataOutputStream out; // поток чтения в сокет
     private BufferedReader inputUser; // поток чтения с консоли
     private String filename;
     private int filesize;
@@ -42,8 +42,8 @@ class ClientThread {
         try {
             // потоки чтения из сокета / записи в сокет, и чтения с консоли
             inputUser = new BufferedReader(new InputStreamReader(System.in));
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            in = new DataInputStream(socket.getInputStream());
+            out = new DataOutputStream(socket.getOutputStream());
         } catch (IOException e) {
             // Сокет должен быть закрыт при любой
             // ошибке, кроме ошибки конструктора сокета:
@@ -68,7 +68,7 @@ class ClientThread {
     }
 
     public void sendFile(String filename, boolean encrypt) throws IOException, EncryptionException {
-        out.write("uploading" + "\n");
+        out.writeUTF("uploading");
         out.flush();
 
         String file = filename;
@@ -82,41 +82,40 @@ class ClientThread {
         }
 
         prepareServer(file);
-
-        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        
         FileInputStream fis = new FileInputStream(file);
         byte[] buffer = new byte[4096];
-
-        while (fis.read(buffer) > 0) {
-            dos.write(buffer);
+        
+        int read = 0;
+        while((read = fis.read(buffer)) > 0) {
+            out.write(buffer, 0, read);
         }
 
         fis.close();
-        dos.close();
+        
+        out.flush();
     }
 
     public void recieveFile(String filename, boolean decrypt) throws IOException, EncryptionException {
-        out.write("downloading" + "\n");
+        out.writeUTF("downloading");
         out.flush();
 
         this.filename = filename;
 
         getFileInfoFromServer();
-
-        DataInputStream dis = new DataInputStream(socket.getInputStream());
+        
         FileOutputStream fos = new FileOutputStream(filename);
         byte[] buffer = new byte[4096];
 
         // Send file size in separate msg
         int read = 0;
         int remaining = filesize;
-        while((read = dis.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
+        while((read = in.read(buffer, 0, Math.min(buffer.length, remaining))) > 0) {
             remaining -= read;
             fos.write(buffer, 0, read);
         }
         System.out.println("Created file: " + filename);
         fos.close();
-        dis.close();
 
         if (decrypt) {
             System.out.println("Decrypting file " + filename);
@@ -131,16 +130,16 @@ class ClientThread {
         filename = file.getName();
 
         int size = getFilesize(file);
-        out.write(filename + "\n");
-        out.write(size + "\n");
+        out.writeUTF(filename);
+        out.writeInt(size);
         out.flush();
     }
 
     private void getFileInfoFromServer() throws IOException {
-        out.write(filename + "\n");
+        out.writeUTF(filename);
         out.flush();
 
-        this.filesize = Integer.parseInt(in.readLine());
+        this.filesize = in.readInt();
     }
 
     private int getFilesize(File file) {
