@@ -65,6 +65,8 @@ public class TransferDialog extends JFrame {
                                 JOptionPane.INFORMATION_MESSAGE);
                         chbxEncrypt.setSelected(false);
                     }
+                } else {
+                    encrypt = false;
                 }
             }
         });
