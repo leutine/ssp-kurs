@@ -1,5 +1,7 @@
 package client;
 
+import com.sun.org.apache.xml.internal.security.utils.JDKXPathAPI;
+
 import javax.swing.*;
 import javax.swing.border.LineBorder;
 import java.awt.*;
@@ -11,7 +13,8 @@ import java.io.IOException;
 public class TransferDialog extends JFrame {
 
     private JTextField editFileName;
-    private JLabel labelFIleName;
+    private JLabel labelFile;
+    private JLabel labelFilename;
     private JButton btnGenerateKey;
     private JButton btnFileSelector;
     private JButton btnListOfFiles;
@@ -30,44 +33,41 @@ public class TransferDialog extends JFrame {
         this.connection = conn;
         String ipAddr = conn.getIpAddr();
         int port = conn.getPort();
-        setPreferredSize(new Dimension(800, 300));
+        setPreferredSize(new Dimension(800, 200));
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel sendPanel = new JPanel(new GridBagLayout());
+        JPanel recievePanel = new JPanel(new GridBagLayout());
+        JPanel encryptionPanel = new JPanel(new GridBagLayout());
+        JPanel bottomPanel = new JPanel(new GridBagLayout());
+
         GridBagConstraints cs = new GridBagConstraints();
 
         cs.fill = GridBagConstraints.HORIZONTAL;
 
-        labelFIleName = new JLabel("Файл: ");
+        labelFile = new JLabel("Путь к файлу: ");
         cs.gridx = 0;
         cs.gridy = 0;
         cs.gridwidth = 1;
-        panel.add(labelFIleName, cs);
+        sendPanel.add(labelFile, cs);
 
-        editFileName = new JTextField(20);
-        cs.gridx = 1;
-        cs.gridy = 0;
-        cs.gridwidth = 2;
-        panel.add(editFileName, cs);
+        labelFilename = new JLabel("");
+        cs.gridx = 0;
+        cs.gridy = 1;
+        cs.gridwidth = 3;
+        sendPanel.add(labelFilename, cs);
 
         JComboBox fileList = new JComboBox();
-        fileList.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    //editFileName.setText();
-                } catch (NullPointerException ignored) {
-                }
-            }
-        });
+        fileList.setVisible(false);
 
-        JPanel dropdown = new JPanel();
+        cs.gridx = 0;
+        cs.gridy = 1;
+        recievePanel.add(fileList, cs);
 
-        dropdown.add(fileList);
-
-        panel.setBorder(new LineBorder(Color.GRAY));
+//        sendPanel.setBorder(new LineBorder(Color.GRAY));
 
         chbxEncrypt = new JCheckBox("Использовать шифрование");
+        chbxEncrypt.setToolTipText("Выберите чекбокс, если необходимо отправить или принять зашифрованное изображение");
         chbxEncrypt.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -86,10 +86,9 @@ public class TransferDialog extends JFrame {
             }
         });
 
-        cs.gridx = 1;
-        cs.gridy = 1;
-        cs.gridwidth = 3;
-        panel.add(chbxEncrypt, cs);
+        cs.gridx = 0;
+        cs.gridy = 0;
+        encryptionPanel.add(chbxEncrypt, cs);
 
         btnGenerateKey = new JButton("Сгенерировать ключ");
         btnGenerateKey.addActionListener(new ActionListener() {
@@ -112,25 +111,35 @@ public class TransferDialog extends JFrame {
             }
         });
 
-        btnFileSelector = new JButton("Выбрать файл для загрузки на сервер");
+        cs.gridx = 0;
+        cs.gridy = 1;
+        encryptionPanel.add(btnGenerateKey, cs);
+
+        btnFileSelector = new JButton("Выбрать файл");
         btnFileSelector.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String filepath = FileSelector();
 
-                editFileName.setText(filepath);
+                labelFilename.setText(filepath);
+                labelFilename.setToolTipText(filepath);
                 file = new File(filepath);
 
                 System.out.println(filepath + " chosen.");
             }
         });
 
+        cs.gridx = 1;
+        cs.gridy = 2;
+        cs.gridwidth = 1;
+        sendPanel.add(btnFileSelector, cs);
 
         btnListOfFiles = new JButton("Получить список файлов");
         btnListOfFiles.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                System.out.println("Got list of files");
+                fileList.setVisible(true);
+                System.out.println("Getting list of files from server");
                 try {
                     fileList.removeAllItems();
                     connection.getListFromServer();
@@ -145,18 +154,31 @@ public class TransferDialog extends JFrame {
             }
         });
 
+        cs.gridx = 0;
+        cs.gridy = 0;
+        recievePanel.add(btnListOfFiles, cs);
+
         btnSend = new JButton("Отправить файл");
         btnSend.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 System.out.println("upload!");
                 try {
-                    connection.sendFile(editFileName.getText(), encrypt);
+                    connection.sendFile(labelFilename.getText(), encrypt);
                 } catch (IOException | EncryptionException e1) {
+                    JOptionPane.showMessageDialog(parent,
+                            "Возникла ошибка при отправке файла! Выберите существующий файл.",
+                            "IOException",
+                            JOptionPane.ERROR_MESSAGE);
                     e1.printStackTrace();
                 }
             }
         });
+
+        cs.gridx = 1;
+        cs.gridy = 3;
+//        cs.gridwidth = 2;
+        sendPanel.add(btnSend, cs);
 
         btnRecieve = new JButton("Скачать файл");
         btnRecieve.addActionListener(new ActionListener() {
@@ -171,6 +193,10 @@ public class TransferDialog extends JFrame {
             }
         });
 
+        cs.gridx = 0;
+        cs.gridy = 2;
+        recievePanel.add(btnRecieve, cs);
+
         btnClose = new JButton("Выход");
         btnClose.addActionListener(new ActionListener() {
             @Override
@@ -178,19 +204,12 @@ public class TransferDialog extends JFrame {
                 System.exit(0);
             }
         });
+        bottomPanel.add(btnClose);
 
-        JPanel bp = new JPanel();
-        bp.add(btnGenerateKey);
-        panel.add(btnFileSelector);
-
-        dropdown.add(btnListOfFiles);
-        panel.add(btnSend);
-        dropdown.add(btnRecieve);
-        bp.add(btnClose);
-
-        getContentPane().add(panel, BorderLayout.NORTH);
-        getContentPane().add(bp, BorderLayout.SOUTH);
-        getContentPane().add(dropdown, BorderLayout.CENTER);
+        getContentPane().add(sendPanel, BorderLayout.WEST);
+        getContentPane().add(recievePanel, BorderLayout.CENTER);
+        getContentPane().add(encryptionPanel, BorderLayout.EAST);
+        getContentPane().add(bottomPanel, BorderLayout.SOUTH);
 
         pack();
         setResizable(false);
