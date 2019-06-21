@@ -174,12 +174,6 @@ class ClientThread {
         } catch (IOException ignored) {}
     }
 
-    public void encryptionTest() throws EncryptionException {
-//        Encryption.encrypt(key, new File(path + "boat.png"), new File(path + "boat_encrypted.png"));
-        Encryption.decrypt(key, new File(path + "lena.png.encrypted"), new File(path + "lena_decrypted.png"));
-        System.out.println("Test Done!");
-    }
-
     public String getKeyfile() {
         return keyfile;
     }
