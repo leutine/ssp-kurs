@@ -44,6 +44,9 @@ class ServerThread extends Thread {
                         System.out.println("Uploading file to client");
                         prepareClient();
                         sendFile();
+                    } else if (command.equalsIgnoreCase("listing")) {
+                        System.out.println("Uploading list to client");
+                        sendList();
                     }
                 }
             } catch (NullPointerException ignored) {}
@@ -98,6 +101,22 @@ class ServerThread extends Thread {
         this.filename = in.readUTF();
         int size = getFilesize(new File(clientpath + filename));
         out.writeInt(size);
+        out.flush();
+    }
+
+    private void sendList() throws IOException {
+        File folder = new File(clientpath);
+        File[] listOfFiles = folder.listFiles();
+
+        out.writeInt(listOfFiles.length);
+        out.writeChars("\n");
+
+        for (int i = 0; i < listOfFiles.length; i++) {
+            if (listOfFiles[i].isFile()) {
+                //System.out.println(listOfFiles[i].getName());
+                out.writeChars(listOfFiles[i].getName() + "\n");
+            }
+        }
         out.flush();
     }
 

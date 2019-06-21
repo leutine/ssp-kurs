@@ -14,6 +14,7 @@ public class TransferDialog extends JFrame {
     private JLabel labelFIleName;
     private JButton btnGenerateKey;
     private JButton btnFileSelector;
+    private JButton btnListOfFiles;
     private JButton btnSend;
     private JButton btnRecieve;
     private JButton btnClose;
@@ -49,6 +50,17 @@ public class TransferDialog extends JFrame {
         cs.gridwidth = 2;
         panel.add(editFileName, cs);
 
+        JComboBox fileList = new JComboBox();
+        fileList.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                editFileName.setText(fileList.getItemAt(fileList.getSelectedIndex()).toString());
+            }
+        });
+
+        JPanel dropdown = new JPanel();
+
+        dropdown.add(fileList);
 
         panel.setBorder(new LineBorder(Color.GRAY));
 
@@ -108,6 +120,25 @@ public class TransferDialog extends JFrame {
             }
         });
 
+        btnListOfFiles = new JButton("Получить список файлов");
+        btnListOfFiles.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.out.println("Got list of files");
+                try {
+                    connection.getListFromServer();
+
+                    for(int i = 0; i < conn.getListSize(); i++){
+                        fileList.addItem(conn.toppings[i]);
+                    }
+
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+
+            }
+        });
+
         btnSend = new JButton("Отправить файл");
         btnSend.addActionListener(new ActionListener() {
             @Override
@@ -144,13 +175,15 @@ public class TransferDialog extends JFrame {
 
         JPanel bp = new JPanel();
         bp.add(btnGenerateKey);
-        bp.add(btnFileSelector);
+        panel.add(btnFileSelector);
+        bp.add(btnListOfFiles);
         bp.add(btnSend);
         bp.add(btnRecieve);
         bp.add(btnClose);
 
-        getContentPane().add(panel, BorderLayout.CENTER);
-        getContentPane().add(bp, BorderLayout.PAGE_END);
+        getContentPane().add(panel, BorderLayout.NORTH);
+        getContentPane().add(bp, BorderLayout.SOUTH);
+        getContentPane().add(dropdown, BorderLayout.CENTER);
 
         pack();
         setResizable(false);

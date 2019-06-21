@@ -17,10 +17,13 @@ class ClientThread {
     private BufferedReader inputUser; // поток чтения с консоли
     private String filename;
     private int filesize;
+    private int getting;
 
     private static final String path = "images_client\\";
     private static final String keyfile = "crypto.key";
     private static String key;
+
+    String[] toppings = new String[20];
 
     private static String ipAddr;
     private static int port;
@@ -142,6 +145,17 @@ class ClientThread {
         this.filesize = in.readInt();
     }
 
+    public void getListFromServer() throws IOException {
+        out.writeUTF("listing");
+        out.flush();
+
+        getting = in.readInt();
+
+        for (int i = 0; i < getting; i++) {
+            toppings[i]=in.readLine();
+        }
+    }
+
     private int getFilesize(File file) {
         return (int) file.length();
     }
@@ -175,6 +189,10 @@ class ClientThread {
 
     public int getPort() {
         return port;
+    }
+
+    public int getListSize() {
+        return getting;
     }
 }
 
