@@ -15,6 +15,7 @@ public class TransferDialog extends JFrame {
     private JButton btnGenerateKey;
     private JButton btnFileSelector;
     private JButton btnListOfFiles;
+    private JButton btnServerFileSelect;
     private JButton btnSend;
     private JButton btnRecieve;
     private JButton btnClose;
@@ -54,7 +55,6 @@ public class TransferDialog extends JFrame {
         fileList.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                editFileName.setText(fileList.getItemAt(fileList.getSelectedIndex()).toString());
             }
         });
 
@@ -109,7 +109,7 @@ public class TransferDialog extends JFrame {
             }
         });
 
-        btnFileSelector = new JButton("Выбрать файл");
+        btnFileSelector = new JButton("Выбрать файл для загрузки на сервер");
         btnFileSelector.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -122,12 +122,21 @@ public class TransferDialog extends JFrame {
             }
         });
 
+        btnServerFileSelect = new JButton("Выбрать файл для скачивания");
+        btnServerFileSelect.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                editFileName.setText(fileList.getItemAt(fileList.getSelectedIndex()).toString());
+            }
+        });
+
         btnListOfFiles = new JButton("Получить список файлов");
         btnListOfFiles.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 System.out.println("Got list of files");
                 try {
+                    fileList.removeAllItems();
                     connection.getListFromServer();
 
                     for(int i = 0; i < conn.getListSize(); i++){
@@ -137,7 +146,6 @@ public class TransferDialog extends JFrame {
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
-
             }
         });
 
@@ -178,10 +186,13 @@ public class TransferDialog extends JFrame {
         JPanel bp = new JPanel();
         bp.add(btnGenerateKey);
         panel.add(btnFileSelector);
+
         bp.add(btnListOfFiles);
         bp.add(btnSend);
         bp.add(btnRecieve);
         bp.add(btnClose);
+
+        dropdown.add(btnServerFileSelect);
 
         getContentPane().add(panel, BorderLayout.NORTH);
         getContentPane().add(bp, BorderLayout.SOUTH);

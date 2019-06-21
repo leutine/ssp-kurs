@@ -152,7 +152,8 @@ class ClientThread {
         getting = in.readInt();
 
         for (int i = 0; i < getting; i++) {
-            toppings[i]=in.readLine();
+            toppings[i]=in.readUTF();
+            System.out.println(toppings[i]);
         }
     }
 

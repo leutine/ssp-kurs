@@ -109,12 +109,11 @@ class ServerThread extends Thread {
         File[] listOfFiles = folder.listFiles();
 
         out.writeInt(listOfFiles.length);
-        out.writeChars("\n");
 
         for (int i = 0; i < listOfFiles.length; i++) {
             if (listOfFiles[i].isFile()) {
-                //System.out.println(listOfFiles[i].getName());
-                out.writeChars(listOfFiles[i].getName() + "\n");
+                System.out.println(listOfFiles[i].getName());
+                out.writeUTF(listOfFiles[i].getName());
             }
         }
         out.flush();
